@@ -1,0 +1,13 @@
+<preference-headers xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- These settings headers are only used on tablets. -->
+
+    <header
+        android:fragment="com.xpensia.locationpush.SettingsActivity$GPSPreferenceFragment"
+        android:title="@string/pref_header_gps" />
+
+    <header
+        android:fragment="com.xpensia.locationpush.SettingsActivity$ConnectionPreferenceFragment"
+        android:title="@string/pref_header_connection" />
+
+</preference-headers>
