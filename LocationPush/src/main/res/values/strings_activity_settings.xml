@@ -5,11 +5,18 @@
     <!-- Settings for GPS Service -->
     <string name="pref_header_gps">Service GPS</string>
     <string name="pref_gps_enable_title">Activer service GPS</string>
-    <string name="pref_gps_enable_summary">Activer l'envoi des coordonnées au serveur</string>
+    <string name="pref_gps_enable_summary">Activer l\'envoi des coordonnées au serveur</string>
+    <string name="pref_gps_name_title">Nom a joindre aux coordonnées</string>
+    <string name="pref_gps_name_default"></string>
 
 
     <!-- Settings for Connection config -->
     <string name="pref_header_connection">Connexion au serveur</string>
+    <string name="pref_connection_key_title">Clef d\'accès</string>
+    <string name="pref_connection_pass_title">Mot de passe</string>
+    <string name="pref_connection_secure_title">Utiliser HTTPS</string>
+    <string name="pref_connection_domain_title">Nom d\'hôte</string>
+    <string name="pref_connection_database_title">Base de données</string>
 
     <!-- Example General settings -->
     <string name="pref_header_general">General</string>

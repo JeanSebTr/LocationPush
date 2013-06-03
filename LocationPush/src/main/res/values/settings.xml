@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="config_connection_secure">true</bool>
+    <string name="config_connection_domain">xpensia.cloudant.com</string>
+    <string name="config_connection_database">gps</string>
+</resources>

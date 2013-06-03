@@ -15,6 +15,7 @@ import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
+import android.preference.TwoStatePreference;
 import android.text.TextUtils;
 
 import java.util.List;
@@ -56,32 +57,27 @@ public class SettingsActivity extends PreferenceActivity {
         if (!isSimplePreferences(this)) {
             return;
         }
-
-        // In the simplified UI, fragments are not used at all and we instead
-        // use the older PreferenceActivity APIs.
-
-        // Add 'general' preferences.
-        //addPreferencesFromResource(R.xml.pref_gps);
-
-        // Add Service GPS preferences
+        // Add 'Service GPS' preferences
         PreferenceCategory fakeHeader = new PreferenceCategory(this);
         fakeHeader.setTitle(R.string.pref_header_gps);
         getPreferenceScreen().addPreference(fakeHeader);
         addPreferencesFromResource(R.xml.pref_gps);
 
-        // Add 'data and sync' preferences, and a corresponding header.
-        fakeHeader = new PreferenceCategory(this);
-        fakeHeader.setTitle(R.string.pref_header_data_sync);
-        getPreferenceScreen().addPreference(fakeHeader);
-        addPreferencesFromResource(R.xml.pref_data_sync);
+        bindPreferenceSummaryToValue(findPreference("service_running"));
+        bindPreferenceSummaryToValue(findPreference("username"));
 
-        // Bind the summaries of EditText/List/Dialog/Ringtone preferences to
-        // their values. When their values change, their summaries are updated
-        // to reflect the new value, per the Android Design guidelines.
-        bindPreferenceSummaryToValue(findPreference("example_text"));
-        bindPreferenceSummaryToValue(findPreference("example_list"));
-        bindPreferenceSummaryToValue(findPreference("notifications_new_message_ringtone"));
-        bindPreferenceSummaryToValue(findPreference("sync_frequency"));
+
+        // Add 'Connexion au serveur' preferences, and a corresponding header.
+        fakeHeader = new PreferenceCategory(this);
+        fakeHeader.setTitle(R.string.pref_header_connection);
+        getPreferenceScreen().addPreference(fakeHeader);
+        addPreferencesFromResource(R.xml.pref_connection);
+
+        bindPreferenceSummaryToValue(findPreference("key"));
+        bindPreferenceSummaryToValue(findPreference("pass"));
+        bindPreferenceSummaryToValue(findPreference("secure"));
+        bindPreferenceSummaryToValue(findPreference("domain"));
+        bindPreferenceSummaryToValue(findPreference("database"));
     }
 
     /** {@inheritDoc} */
@@ -188,10 +184,15 @@ public class SettingsActivity extends PreferenceActivity {
 
         // Trigger the listener immediately with the preference's
         // current value.
-        sBindPreferenceSummaryToValueListener.onPreferenceChange(preference,
-                PreferenceManager
-                        .getDefaultSharedPreferences(preference.getContext())
-                        .getString(preference.getKey(), ""));
+        Object value = null;
+        if(preference instanceof TwoStatePreference) {
+            value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getBoolean(preference.getKey(), true);
+        }
+        else {
+            value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getString(preference.getKey(), "");
+        }
+        sBindPreferenceSummaryToValueListener.onPreferenceChange(preference, value);
+
     }
 
     /**
@@ -205,12 +206,8 @@ public class SettingsActivity extends PreferenceActivity {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.pref_gps);
 
-            // Bind the summaries of EditText/List/Dialog/Ringtone preferences
-            // to their values. When their values change, their summaries are
-            // updated to reflect the new value, per the Android Design
-            // guidelines.
-            bindPreferenceSummaryToValue(findPreference("example_text"));
-            bindPreferenceSummaryToValue(findPreference("example_list"));
+            bindPreferenceSummaryToValue(findPreference("service_running"));
+            bindPreferenceSummaryToValue(findPreference("username"));
         }
     }
 
@@ -225,11 +222,11 @@ public class SettingsActivity extends PreferenceActivity {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.pref_connection);
 
-            // Bind the summaries of EditText/List/Dialog/Ringtone preferences
-            // to their values. When their values change, their summaries are
-            // updated to reflect the new value, per the Android Design
-            // guidelines.
-            bindPreferenceSummaryToValue(findPreference("notifications_new_message_ringtone"));
+            bindPreferenceSummaryToValue(findPreference("key"));
+            bindPreferenceSummaryToValue(findPreference("pass"));
+            bindPreferenceSummaryToValue(findPreference("secure"));
+            bindPreferenceSummaryToValue(findPreference("domain"));
+            bindPreferenceSummaryToValue(findPreference("database"));
         }
     }
 }
