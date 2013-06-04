@@ -2,6 +2,7 @@ package com.xpensia.locationpush;
 
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -44,6 +45,8 @@ public class SettingsActivity extends PreferenceActivity {
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
+
+        startService(new Intent(this, LocationService.class));
 
         setupSimplePreferencesScreen();
     }
@@ -124,11 +127,18 @@ public class SettingsActivity extends PreferenceActivity {
     private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener() {
         @Override
         public boolean onPreferenceChange(Preference preference, Object value) {
-            String stringValue = value.toString();
+            String key = preference.getKey();
 
-            if (preference instanceof ListPreference) {
+            if (preference instanceof TwoStatePreference) {
+                if(key.equals("service_running")) {
+                    if(value.equals(Boolean.TRUE)) {
+
+                    }
+                }
+            } else if (preference instanceof ListPreference) {
                 // For list preferences, look up the correct display value in
                 // the preference's 'entries' list.
+                String stringValue = value.toString();
                 ListPreference listPreference = (ListPreference) preference;
                 int index = listPreference.findIndexOfValue(stringValue);
 
@@ -139,6 +149,7 @@ public class SettingsActivity extends PreferenceActivity {
                                 : null);
 
             } else if (preference instanceof RingtonePreference) {
+                String stringValue = value.toString();
                 // For ringtone preferences, look up the correct display value
                 // using RingtoneManager.
                 if (TextUtils.isEmpty(stringValue)) {
@@ -163,6 +174,7 @@ public class SettingsActivity extends PreferenceActivity {
             } else {
                 // For all other preferences, set the summary to the value's
                 // simple string representation.
+                String stringValue = value.toString();
                 preference.setSummary(stringValue);
             }
             return true;
@@ -186,7 +198,7 @@ public class SettingsActivity extends PreferenceActivity {
         // current value.
         Object value = null;
         if(preference instanceof TwoStatePreference) {
-            value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getBoolean(preference.getKey(), true);
+            value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getBoolean(preference.getKey(), false);
         }
         else {
             value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getString(preference.getKey(), "");
