@@ -1,21 +1,22 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <CheckBoxPreference
-        android:key="service_running"
-        android:title="@string/pref_gps_enable_title"
-        android:summary="@string/pref_gps_enable_summary"
-        android:defaultValue="false" />
+    <SwitchPreference
+            android:key="service_running"
+            android:title="@string/pref_gps_enable_title"
+            android:summaryOff="Le GPS est désactivé"
+            android:summaryOn="Le GPS est activé"
+            android:defaultValue="false"/>
 
     <!-- NOTE: EditTextPreference accepts EditText attributes. -->
     <!-- NOTE: EditTextPreference's summary should be set to its value by the activity code. -->
     <EditTextPreference
-        android:key="username"
-        android:title="@string/pref_gps_name_title"
-        android:defaultValue="@string/pref_gps_name_default"
-        android:selectAllOnFocus="true"
-        android:inputType="text"
-        android:singleLine="true"
-        android:maxLines="1" />
+            android:key="username"
+            android:title="@string/pref_gps_name_title"
+            android:defaultValue="@string/pref_gps_name_default"
+            android:selectAllOnFocus="true"
+            android:inputType="text"
+            android:singleLine="true"
+            android:maxLines="1"/>
 
     <!-- NOTE: Hide buttons to simplify the UI. Users can touch outside the dialog to
          dismiss it. -->

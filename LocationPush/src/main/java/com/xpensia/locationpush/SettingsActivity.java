@@ -1,6 +1,8 @@
 package com.xpensia.locationpush;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -12,12 +14,12 @@ import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
 import android.preference.TwoStatePreference;
 import android.text.TextUtils;
+import android.view.View;
 
 import java.util.List;
 
@@ -26,7 +28,7 @@ import java.util.List;
  * handset devices, settings are presented as a single list. On tablets,
  * settings are split by category, with category headers shown to the left of
  * the list of settings.
- * <p>
+ * <p/>
  * See <a href="http://developer.android.com/design/patterns/settings.html">
  * Android Design: Settings</a> for design guidelines and the <a
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
@@ -41,49 +43,37 @@ public class SettingsActivity extends PreferenceActivity {
      */
     private static final boolean ALWAYS_SIMPLE_PREFS = false;
 
+    private View button = null;
 
     @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+    }
 
-        startService(new Intent(this, LocationService.class));
-
-        setupSimplePreferencesScreen();
+    private static boolean isServiceRunning(Activity context) {
+        ActivityManager manager = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if ("com.xpensia.locationpush.LocationService".equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
-     * Shows the simplified settings UI if the device configuration if the
-     * device configuration dictates that a simplified, single-pane UI should be
-     * shown.
+     * {@inheritDoc}
      */
-    private void setupSimplePreferencesScreen() {
-        if (!isSimplePreferences(this)) {
-            return;
-        }
-        // Add 'Service GPS' preferences
-        PreferenceCategory fakeHeader = new PreferenceCategory(this);
-        fakeHeader.setTitle(R.string.pref_header_gps);
-        getPreferenceScreen().addPreference(fakeHeader);
-        addPreferencesFromResource(R.xml.pref_gps);
-
-        bindPreferenceSummaryToValue(findPreference("service_running"));
-        bindPreferenceSummaryToValue(findPreference("username"));
-
-
-        // Add 'Connexion au serveur' preferences, and a corresponding header.
-        fakeHeader = new PreferenceCategory(this);
-        fakeHeader.setTitle(R.string.pref_header_connection);
-        getPreferenceScreen().addPreference(fakeHeader);
-        addPreferencesFromResource(R.xml.pref_connection);
-
-        bindPreferenceSummaryToValue(findPreference("key"));
-        bindPreferenceSummaryToValue(findPreference("pass"));
-        bindPreferenceSummaryToValue(findPreference("secure"));
-        bindPreferenceSummaryToValue(findPreference("domain"));
-        bindPreferenceSummaryToValue(findPreference("database"));
+    @Override
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public void onBuildHeaders(List<Header> target) {
+        //if (!isSimplePreferences(this)) {
+        loadHeadersFromResource(R.xml.pref_headers, target);
+        //}
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean onIsMultiPane() {
         return isXLargeTablet(this) && !isSimplePreferences(this);
@@ -95,7 +85,7 @@ public class SettingsActivity extends PreferenceActivity {
      */
     private static boolean isXLargeTablet(Context context) {
         return (context.getResources().getConfiguration().screenLayout
-        & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_XLARGE;
+                & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_XLARGE;
     }
 
     /**
@@ -111,15 +101,6 @@ public class SettingsActivity extends PreferenceActivity {
                 || !isXLargeTablet(context);
     }
 
-    /** {@inheritDoc} */
-    @Override
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-    public void onBuildHeaders(List<Header> target) {
-        if (!isSimplePreferences(this)) {
-            loadHeadersFromResource(R.xml.pref_headers, target);
-        }
-    }
-
     /**
      * A preference value change listener that updates the preference's summary
      * to reflect its new value.
@@ -130,8 +111,8 @@ public class SettingsActivity extends PreferenceActivity {
             String key = preference.getKey();
 
             if (preference instanceof TwoStatePreference) {
-                if(key.equals("service_running")) {
-                    if(value.equals(Boolean.TRUE)) {
+                if (key.equals("service_running")) {
+                    if (value.equals(Boolean.TRUE)) {
 
                     }
                 }
@@ -197,10 +178,9 @@ public class SettingsActivity extends PreferenceActivity {
         // Trigger the listener immediately with the preference's
         // current value.
         Object value = null;
-        if(preference instanceof TwoStatePreference) {
+        if (preference instanceof TwoStatePreference) {
             value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getBoolean(preference.getKey(), false);
-        }
-        else {
+        } else {
             value = PreferenceManager.getDefaultSharedPreferences(preference.getContext()).getString(preference.getKey(), "");
         }
         sBindPreferenceSummaryToValueListener.onPreferenceChange(preference, value);
@@ -213,12 +193,38 @@ public class SettingsActivity extends PreferenceActivity {
      */
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public static class GPSPreferenceFragment extends PreferenceFragment {
+
+        private Preference.OnPreferenceChangeListener bindPreferenceToService = new Preference.OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object value) {
+                Activity activity = getActivity();
+                Boolean start = (Boolean) value;
+                Boolean running = isServiceRunning(activity);
+                Boolean success = true;
+
+                // stop the service
+                if (running && !start) {
+                    activity.stopService(new Intent(activity, LocationService.class));
+                }
+                // start the service
+                else if (!running && start) {
+                    if (activity.startService(new Intent(activity, LocationService.class)) == null) {
+                        success = false;
+                    }
+                }
+                return success;
+            }
+        };
+
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.pref_gps);
 
-            bindPreferenceSummaryToValue(findPreference("service_running"));
+            Preference service_running = findPreference("service_running");
+            service_running.setOnPreferenceChangeListener(bindPreferenceToService);
+            bindPreferenceToService.onPreferenceChange(service_running, service_running.getSharedPreferences().getBoolean("service_running", false));
+
             bindPreferenceSummaryToValue(findPreference("username"));
         }
     }
