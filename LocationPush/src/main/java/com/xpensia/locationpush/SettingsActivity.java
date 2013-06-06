@@ -3,9 +3,12 @@ package com.xpensia.locationpush;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.location.LocationManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -18,6 +21,7 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
 import android.preference.TwoStatePreference;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
 
@@ -208,11 +212,39 @@ public class SettingsActivity extends PreferenceActivity {
                 }
                 // start the service
                 else if (!running && start) {
-                    if (activity.startService(new Intent(activity, LocationService.class)) == null) {
+                    LocationManager locationManager = (LocationManager) activity.getSystemService(LOCATION_SERVICE);
+                    if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                        showNoGPSDialog(activity);
+                        success = false;
+                    } else if (activity.startService(new Intent(activity, LocationService.class)) == null) {
                         success = false;
                     }
                 }
                 return success;
+            }
+
+            private void showNoGPSDialog(Activity activity) {
+                final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                builder.setMessage("Votre GPS doit \u00eatre activ\u00e9. Voulez-vous l'activer maintenant ?")
+                        .setCancelable(false)
+                        .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
+                            public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        /*final ComponentName toLaunch = new ComponentName("com.android.settings","com.android.settings.SecuritySettings");
+                        final Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+                        intent.setComponent(toLaunch);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivityForResult(intent, 0);*/
+                            }
+                        })
+                        .setNegativeButton("Non", new DialogInterface.OnClickListener() {
+                            public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                                dialog.cancel();
+                            }
+                        });
+                final AlertDialog alert = builder.create();
+                alert.show();
             }
         };
 

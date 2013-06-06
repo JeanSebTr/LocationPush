@@ -1,24 +1,43 @@
 package com.xpensia.locationpush;
 
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
+import android.util.Base64;
+import android.util.Log;
+import android.widget.Toast;
+
+import org.apache.http.Header;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.protocol.HTTP;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 
 /**
  * Created by jeansebtr on 13-06-03.
  */
-public class LocationService extends Service implements LocationListener{
+public class LocationService extends Service implements LocationListener {
     private Handler mHandler = new Handler();
 
     private NotificationManager mNotificationManager = null;
@@ -51,7 +70,15 @@ public class LocationService extends Service implements LocationListener{
 
         mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 50, this);
 
+
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public void onDestroy() {
+        mLocationManager.removeUpdates(this);
+
+        super.onDestroy();
     }
 
     @Override
@@ -67,6 +94,96 @@ public class LocationService extends Service implements LocationListener{
                 .concat(String.valueOf(location.getLongitude()));
         mBuilder.setContentText(text);
         mNotificationManager.notify(1, mBuilder.build());
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        Boolean secure = prefs.getBoolean("secure", true);
+        String key = prefs.getString("key", null);
+        String pass = prefs.getString("pass", null);
+        String domain = prefs.getString("domain", "xpensia.cloudant.com");
+        String db = prefs.getString("database", "gps");
+        String username = prefs.getString("username", null);
+
+        Log.w("SendCoord", "preparing query...");
+        // the server
+        HttpHost httpHost = new HttpHost(domain, secure ? 443 : 80, secure ? "https" : "http");
+        //HttpHost httpHost = new HttpHost("192.168.1.145", 5002, "http");
+        // the query
+        HttpPost httppost = new HttpPost("/" + db + "/");
+        httppost.setHeader("Host", domain);
+        if (key != null && !key.equals("") && pass != null && !pass.equals("")) {
+            httppost.setHeader("Authorization", "Basic " + Base64.encodeToString((key + ":" + pass).getBytes(), Base64.NO_WRAP));
+        }
+        httppost.setHeader("Accept", "application/json");
+
+        Log.w("SendCoord", "preparing json...");
+        JSONObject obj = new JSONObject();
+        StringEntity se;
+        try {
+            if (username != null && !username.equals("")) {
+                obj.put("username", username);
+            }
+            obj.put("doc_type", "coord");
+            obj.put("lat", location.getLatitude());
+            obj.put("lng", location.getLongitude());
+            obj.put("alt", location.getAltitude());
+            obj.put("acc", location.getAccuracy());
+            obj.put("date", location.getTime());
+
+            Log.w("SendCoord json", obj.toString());
+            se = new StringEntity(obj.toString());
+            //se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+            httppost.setEntity(se);
+            httppost.setHeader(HTTP.CONTENT_TYPE, "application/json");
+
+            new AsyncTask<Pair<HttpHost, HttpPost>, Void, HttpResponse>() {
+                private IOException mException = null;
+
+                @Override
+                protected HttpResponse doInBackground(Pair<HttpHost, HttpPost>... requests) {
+                    HttpPost req = requests[0].right;
+                    Log.w("SendCoord req", req.getRequestLine().toString());
+                    for (Header header : req.getAllHeaders()) {
+                        Log.w("SendCoord req", header.getName() + ": " + header.getValue());
+                    }
+
+                    HttpClient httpclient = new DefaultHttpClient();
+                    //ResponseHandler responseHandler = new BasicResponseHandler();
+                    try {
+                        HttpResponse response = httpclient.execute(requests[0].left, requests[0].right);
+
+                        Log.w("SendCoord Code", String.valueOf(response.getStatusLine().getStatusCode()));
+                        for (Header header : response.getAllHeaders()) {
+                            Log.w("SendCoord Header", header.getName() + " = " + header.getValue());
+                        }
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent(), "UTF-8"));
+                        StringBuilder builder = new StringBuilder();
+                        for (String line = null; (line = reader.readLine()) != null; ) {
+                            builder.append(line).append("\n");
+                        }
+                        Log.w("SendCoord Result", builder.toString());
+
+                        return response;
+                    } catch (IOException e) {
+                        mException = e;
+                        Log.e("SendCoord", "Error", e);
+                        return null;
+                    }
+                }
+
+                @Override
+                protected void onPostExecute(HttpResponse httpResponse) {
+                    if (mException != null) {
+                        Log.e("SendCoord", "Error", mException);
+                        return;
+                    }
+                    super.onPostExecute(httpResponse);
+                }
+            }.execute(new Pair<HttpHost, HttpPost>(httpHost, httppost));
+        } catch (JSONException e) {
+            Log.e("SendCoord", "Error", e);
+        } catch (UnsupportedEncodingException e) {
+            Log.e("SendCoord", "Error", e);
+        }
     }
 
     @Override
@@ -76,11 +193,27 @@ public class LocationService extends Service implements LocationListener{
 
     @Override
     public void onProviderEnabled(String s) {
-
+        if (s.equals(LocationManager.GPS_PROVIDER)) {
+            startForeground(1, mBuilder.build());
+            Toast.makeText(this, "Le service GPS a \u00e9t\u00e9 activ\u00e9.", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
     public void onProviderDisabled(String s) {
+        if (s.equals(LocationManager.GPS_PROVIDER)) {
+            stopForeground(true);
+            Toast.makeText(this, "Le service GPS a \u00e9t\u00e9 d\u00e9sactiv\u00e9.", Toast.LENGTH_LONG).show();
+        }
+    }
 
+    private class Pair<X, Y> {
+        public final X left;
+        public final Y right;
+
+        public Pair(X left, Y right) {
+            this.left = left;
+            this.right = right;
+        }
     }
 }
